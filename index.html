@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <title>機拡無チャット</title>
+    <!-- 外部cssを読み込み　-->
+    <link rel="stylesheet"
+    href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <!-- C01. Socket.IOクライアントライブラリの読込み -->
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <hr style="border:0;border-top:1px solid #463D3D;">
+        <div style="background-color:#EDF7FF;">
+        <h1 style="padding: 10px">これ以上機能拡張は無理ですチャットルーム</h1>
+      </div>
+        <hr style="border:0;border-top:1px solid #463D3D;">
+        <form class="form-inline">
+            <div class="form-group">
+                <label class="roomLabel" for="rooms">部屋：</label>
+                <select class="form-control" id="rooms">
+                    <option value="room101">101号室</option>
+                    <option value="room102">102号室</option>
+                    <option value="立ち入り禁止">立ち入り禁止</option>
+                </select>
+                <label class="nameLabel" for="msgForm">名前：</label>
+                <input type="text" class="form-control" id="msgForm">
+            </div>
+            <button type="submit" class="btn btn-primary" id="sendButton">入室</button>
+            </form>
+            <br>
+            <div id="chatLogs">
+              <font size="4">----チャットログ----</font>
+            </div>
+            <br>
+            <div id="fortune">
+              <font size="4">----<font color="#ff6666">や</font><font color="#ffab66">け</font><font color="#fff066">く</font><font color="#c9ff66">そ</font><font color="#85ff66">ラ</font><font color="#66ff8c">ッ</font><font color="#66ffd1">キ</font><font color="#55e6ff">ー</font><font color="#448fff">チ</font><font color="#3d33ff">ェ</font><font color="#9122ff">ッ</font><font color="#f311ff">ク</font><font color="#ff0099">！</font>----</font>
+            </div>
+          </div>
+    </div>
+
+    <script type="text/javascript">
+        var chat = io('http://localhost:3000/chat');
+        var fortune = io('http://localhost:3000/fortune');
+        var isEnter = false;
+        var name = '';
+
+        // C04. server_to_clientイベント・データを受信する
+        chat.on("server_to_client", function(data){appendMsg(data.value)});
+        fortune.on("server_to_client", function(data) {appendFortune(data.value)});
+        function appendMsg(text) {
+            $("#chatLogs").append("<div>" + text + "</div>");
+        }
+        function appendFortune(text) {
+            $("#fortune").append("<div>" + text + "</div>");
+        }
+
+        $("form").submit(function(e) {
+            var message = $("#msgForm").val();
+            var selectRoom = $("#rooms").val();
+            $("#msgForm").val('');
+            if (isEnter) {
+              message = "[" + name + "]: " + message;
+                // C03. client_to_serverイベント・データを送信する
+                chat.emit("client_to_server", {value : message});
+            } else {
+                name = message;
+                var entryMessage = name + "さんが入室しました。";
+                chat.emit("client_to_server_join", {value : selectRoom});
+                // C05. client_to_server_broadcastイベント・データを送信する
+                chat.emit("client_to_server_broadcast", {value : entryMessage});
+                // C06. client_to_server_personalイベント・データを送信する
+                chat.emit("client_to_server_personal", {value : name});
+                changeLabel();
+            }
+            e.preventDefault();
+        });
+
+        function changeLabel() {
+            $(".nameLabel").text("メッセージ：");
+            $("#rooms").prop("disabled", true);
+            $("button").text("送信");
+            isEnter = true;
+        }
+
+    </script>
+</body>
+</html>
